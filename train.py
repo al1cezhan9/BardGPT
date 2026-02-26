@@ -8,7 +8,7 @@ device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 batch_size = 64 # independent sequences processed in parallel
 max_iters = 5000 # total num iterations of training 
 eval_interval = 500 # how often we check loss during training
-eval_iters = 200 
+eval_iters = 200 # how many batches to eval loss on before GD
 learning_rate = 3e-4
 
 print(f"Device: {device}")
@@ -27,12 +27,12 @@ vocab_size = len(chars)
 ctoi = {ch:i for i,ch in enumerate(chars)}
 itoc = {i:ch for i,ch in enumerate(chars)}
 
+# save these functions as metadata to load on inference
 meta = {
     'vocab_size': vocab_size,
     'itos': itoc,
     'stoi': ctoi
 }
-
 with open('vocab.json', 'w', encoding='utf-8') as f:
   json.dump(meta, f)
 
@@ -64,18 +64,19 @@ def get_batch(split):
   y = torch.stack([data[i+1:i+block_size+1] for i in ix])
   return x.to(device), y.to(device)
 
+# provides stable estimate of model performance
 @torch.no_grad() # tell pytorch we won't call backprop, efficiency 
 def estimate_loss():
-    out = {}
-    m.eval()
+    out = {} # will hold train/test losses
+    m.eval() # put model into eval mode (no dropout, avg batchnorm)
     for split in ['train', 'val']:
-        losses = torch.zeros(eval_iters)
+        losses = torch.zeros(eval_iters) # create tensor to store loss across all batches
         for k in range(eval_iters):
             X, Y = get_batch(split)
-            logits, loss = m(X, Y)
-            losses[k] = loss.item()
-        out[split] = losses.mean()
-    m.train()
+            logits, loss = m(X, Y) # forward pass to get predictions
+            losses[k] = loss.item() # get the scalar value
+        out[split] = losses.mean() # avg loss for for that split (Train or Test)
+    m.train() # back to training mode
     return out
 
 model = GPT(vocab_size)
@@ -97,7 +98,7 @@ if os.path.exists(checkpoint_path):
   checkpoint = torch.load(checkpoint_path, map_location=device)
   # restore weights
   m.load_state_dict(checkpoint['model_state_dict'])
-  # restore momentum/state
+  # restore momentum/state 
   optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
   print("Resuming training from where we left off.")
 else:

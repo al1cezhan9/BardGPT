@@ -3,6 +3,7 @@ import json
 from model import GPT
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 
+# load the same mappings we created in train.py
 with open('vocab.json', 'r', encoding='utf-8') as f:
     meta = json.load(f)
 stoi = meta['stoi']

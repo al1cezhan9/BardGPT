@@ -37,7 +37,7 @@ temp = st.sidebar.slider("Temperature", 0.1, 2.0, 0.8)
 # -- Main Interface --
 prompt = st.text_input("Enter a prompt:", value="ROMEO: ")
 
-if st.button("Distill Poetry"):
+if st.button("Go!"):
     with st.spinner("Consulting the Bard..."):
         # Convert prompt to tensor
         context = torch.tensor([encode(prompt)], dtype=torch.long)

@@ -80,7 +80,10 @@ class GPT(nn.Module):
     )
     self.ln_f = nn.LayerNorm(n_embd)
     # go from token embed -> logits
-    self.lm_head = nn.Linear(n_embd, vocab_size)
+    self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
+    # inherit weights from embedding matrix (since they are effectively inverse operations)
+    # weight typing for efficiency, 
+    self.lm_head.weight = self.token_embedding_table.weight
 
   def forward(self, idx, targets=None):
     B,T=idx.shape
@@ -89,6 +92,7 @@ class GPT(nn.Module):
     pos_embd = self.position_embedding_table(torch.arange(T, device=idx.device)) # (T,n_embd)
     x = tok_embd + pos_embd
     x = self.blocks(x)
+    x = self.ln_f(x) # final cleanup after stacking residuals
     logits = self.lm_head(x) 
 
     if targets is None:
@@ -120,18 +124,3 @@ class GPT(nn.Module):
       idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
     return idx
   
-
-# # normalizes rows
-# class LayerNorma1d:
-#   def __init__(self, dim, eps=1e-5):
-#     self.eps = eps
-#     self.gamma = torch.ones(dim)
-#     self.beta = torch.zeros(dim)
-#   def __call__(self, x):
-#     xmean = x.mean(1, keepdim=True) # batch mean
-#     xvar = x.var(1, keepdim=True) # batch var
-#     xhat = (x-xmean)/torch.sqrt(xvar+self.eps) # normalize to unit var
-#     self.out = self.gamma * xhat + self.beta
-#     return self.out
-#   def parameters(self):
-#     return [self.gamma, self.beta]
