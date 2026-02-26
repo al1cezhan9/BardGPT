@@ -15,36 +15,28 @@ print(f"Device: {device}")
 
 torch.manual_seed(1337)
 
+# import BPE functions 
+from bpe import encode, decode
+# load trained BPE vocab
+with open("vocab.json", "r", encoding="utf-8") as f:
+  stoi = json.load(f)
+# load merge rules
+with open("merges.txt", "r", encoding="utf-8") as f:
+  # read lines, drop trailing empty line
+  bpe_merges = f.read().split('\n')[:-1] 
+# load dataset (we still need it)
 with open('input.txt', 'r', encoding='utf-8') as f:
-    text = f.read()
+  text = f.read()
 
-# get the vocab by sorting the set of the input text (str)
-chars = sorted(list(set(text)))
-vocab_size = len(chars)
+# define reverse mapping + vocab_size
+itos = {int(i): s for s, i in stoi.items()} 
+vocab_size = len(stoi)
 
-# map char (str) to integer by index in the chars list
-# tradeoff between size of vocab and dimension of embedding
-ctoi = {ch:i for i,ch in enumerate(chars)}
-itoc = {i:ch for i,ch in enumerate(chars)}
+# rebuild the dict: (chunk1, chunk2) -> priority rank
+merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
 
-# save these functions as metadata to load on inference
-meta = {
-    'vocab_size': vocab_size,
-    'itos': itoc,
-    'stoi': ctoi
-}
-with open('vocab.json', 'w', encoding='utf-8') as f:
-  json.dump(meta, f)
-
-print(f"Vocab of size {vocab_size} saved to vocab.json")
-
-# lambda = mini-functions
-encode = lambda s: [ctoi[c] for c in s]
-decode = lambda l: ''.join([itoc[i] for i in l])
-
-# encode entire dataset
-# store it into a torch.Tensor (multi-d array optimized for computation)
-data = torch.tensor(encode(text), dtype=torch.long)
+# pass the vocabulary + chronological merge rules
+data = torch.tensor(encode(text, stoi, merges_dict), dtype=torch.long)
 # print(data.shape, data.dtype)
 # print(data[:100])
 

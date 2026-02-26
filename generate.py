@@ -3,14 +3,22 @@ import json
 from model import GPT
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 
-# load the same mappings we created in train.py
+# load the flat BPE vocabulary
 with open('vocab.json', 'r', encoding='utf-8') as f:
-    meta = json.load(f)
-stoi = meta['stoi']
-itos = {int(k): v for k, v in meta['itos'].items()}
-vocab_size = meta['vocab_size']
-encode = lambda s: [stoi[c] for c in s]
-decode = lambda l: ''.join([itos[i] for i in l])
+    stoi = json.load(f)
+
+itos = {int(i): s for s, i in stoi.items()}
+vocab_size = len(stoi)
+
+# load merge rules
+with open("merges.txt", "r", encoding="utf-8") as f:
+    bpe_merges = f.read().split('\n')[:-1] 
+merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
+
+from bpe import encode as bpe_encode
+from bpe import decode as bpe_decode
+encode = lambda s: bpe_encode(s, stoi, merges_dict)
+decode = lambda l: bpe_decode(l, itos)
 
 model = GPT(vocab_size)
 checkpoint = torch.load('transformer.pth', map_location=device)
