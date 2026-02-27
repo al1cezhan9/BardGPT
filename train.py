@@ -6,7 +6,7 @@ device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 
 # --hyperparams--
 batch_size = 64 # independent sequences processed in parallel
-max_iters = 5000 # total num iterations of training 
+max_iters = 10000 # total num iterations of training 
 eval_interval = 500 # how often we check loss during training
 eval_iters = 200 # how many batches to eval loss on before GD
 learning_rate = 3e-4
@@ -37,8 +37,6 @@ merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
 
 # pass the vocabulary + chronological merge rules
 data = torch.tensor(encode(text, stoi, merges_dict), dtype=torch.long)
-# print(data.shape, data.dtype)
-# print(data[:100])
 
 # split data into 90% train vs. 10% validation
 n = int(0.9*len(data))
@@ -71,18 +69,13 @@ def estimate_loss():
     m.train() # back to training mode
     return out
 
-model = GPT(vocab_size)
-m = model.to(device)
-
-# # 1x1 tensor holding a 0, kickoff character
-# idx = torch.zeros((1, 1), dtype=torch.long)
-# print("="*20+"before training: "+"="*20)
-# print(decode(m.generate(idx, max_new_tokens=100)[0].tolist()))
+m = GPT(vocab_size).to(device)
 
 # time to train!
 optimizer = torch.optim.AdamW(m.parameters(), lr=learning_rate, weight_decay=0.1)
 
-checkpoint_path = 'transformer.pth'
+# altered from transformer.pth
+checkpoint_path = 'transformer_opt.pth'
 
 if os.path.exists(checkpoint_path):
   print(f"Loading existing weights from {checkpoint_path}...")
@@ -92,22 +85,37 @@ if os.path.exists(checkpoint_path):
   m.load_state_dict(checkpoint['model_state_dict'])
   # restore momentum/state 
   optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+  start_iter = checkpoint['iter']
   print("Resuming training from where we left off.")
 else:
+  start_iter = 0
   print("No checkpoint found. Starting fresh.")
 
+scaler = torch.amp.GradScaler()
 
-for iter in range(max_iters):
+for iter in range(start_iter, max_iters):
   if iter % eval_interval == 0:
     losses = estimate_loss()
     print(f"step # {iter} || train loss: {losses['train']:.4f} || val loss: {losses['val']:.4f}")
+    checkpoint = {
+      'iter': iter,
+      'model_state_dict': m.state_dict(),
+      'optimizer_state_dict': optimizer.state_dict(),
+    }
+    torch.save(checkpoint, 'transformer.pth')
+    print(f"Checkpoint at iter {iter} saved!")
   xb, yb = get_batch('train')
-  logits, loss = m(xb, yb)
-  optimizer.zero_grad(set_to_none=True) # zero out gradients
-  loss.backward() # get grads for all params
-  optimizer.step() # using grad to update params
+  optimizer.zero_grad(set_to_none=True) # zero out grads
+  with torch.autocast(device_type=device, dtype=torch.float16):
+    logits, loss = m(xb, yb) # mixed precision handling
+  scaler.scale(loss).backward() # amplify loss, get grads for each
+  scaler.unscale_(optimizer) # unscale grads
+  torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0) # clip exploding grads 
+  scaler.step(optimizer) # use grad to update params
+  scaler.update() 
 
 checkpoint = {
+    'iter': iter,
     'model_state_dict': m.state_dict(),
     'optimizer_state_dict': optimizer.state_dict(),
 }

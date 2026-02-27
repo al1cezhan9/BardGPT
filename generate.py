@@ -17,6 +17,7 @@ merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
 
 from bpe import encode as bpe_encode
 from bpe import decode as bpe_decode
+# wrappers
 encode = lambda s: bpe_encode(s, stoi, merges_dict)
 decode = lambda l: bpe_decode(l, itos)
 
