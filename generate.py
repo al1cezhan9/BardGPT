@@ -1,7 +1,8 @@
 import torch
 import json
-from model import GPT
+from model import GPT, GPTConfig
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+
 
 # load the flat BPE vocabulary
 with open('vocab.json', 'r', encoding='utf-8') as f:
@@ -21,7 +22,8 @@ from bpe import decode as bpe_decode
 encode = lambda s: bpe_encode(s, stoi, merges_dict)
 decode = lambda l: bpe_decode(l, itos)
 
-model = GPT(vocab_size)
+config = GPTConfig(vocab_size=vocab_size)
+model = GPT(config)
 checkpoint = torch.load('transformer.pth', map_location=device)
 model.load_state_dict(checkpoint['model_state_dict'])
 model.to(device)
@@ -34,6 +36,12 @@ if prompt == "":
 else:
     context = torch.tensor([encode(prompt)], dtype=torch.long, device=device)
 
+max_new_tokens = input("Enter the number of tokens you would like to generate (or press Enter for defulat): ")
+if max_new_tokens == "":
+    max_new_tokens=0
+else:
+    max_new_tokens = int(max_new_tokens)
+
 print("\n--- Generating ---\n")
-generated_indices = model.generate(context, max_new_tokens=500)
+generated_indices = model.generate(context, max_new_tokens=max_new_tokens)
 print(decode(generated_indices[0].tolist()))
