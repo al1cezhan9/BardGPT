@@ -10,7 +10,7 @@ from bpe import encode, decode
 
 # --hyperparams--
 batch_size = 64 # independent sequences processed in parallel
-max_iters = 10000 # total num iterations of training 
+max_iters = 3000 # total num iterations of training 
 eval_interval = 500 # how often we check loss during training
 eval_iters = 200 # how many batches to eval loss on before GD
 learning_rate = 3e-4
@@ -63,7 +63,7 @@ def estimate_loss():
         losses = torch.zeros(eval_iters) # create tensor to store loss across all batches
         for k in range(eval_iters):
             X, Y = get_batch(split)
-            logits, loss = m(X, Y) # forward pass to get predictions
+            logits, loss, _ = m(X, Y) # forward pass to get predictions
             losses[k] = loss.item() # get the scalar value
         out[split] = losses.mean() # avg loss for for that split (Train or Test)
     m.train() # back to training mode
@@ -82,7 +82,7 @@ if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path, map_location=device)
     m.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict']) # restore momentum/state 
-    start_iter = checkpoint['metrics']['iters'][-1]+1
+    start_iter = checkpoint['iter'] + 1
     metrics = checkpoint['metrics']
     scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     print("Resuming training from where we left off.")
@@ -133,10 +133,10 @@ for iter in range(start_iter, max_iters):
       torch.save(checkpoint, 'checkpoint_best.pth')
       print(f"New best model saved at iter {iter}!")
 
-  xb, yb = get_batch('train', )
+  xb, yb = get_batch('train')
   optimizer.zero_grad(set_to_none=True) # zero out grads
   with torch.autocast(device_type=device, dtype=ptdtype):
-    logits, loss = m(xb, yb) # mixed precision handling
+    logits, loss, _ = m(xb, yb) # mixed precision handling
   scaler.scale(loss).backward() # amplify loss, get grads for each
   scaler.unscale_(optimizer) # unscale grads
   torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0) # clip exploding grads 
