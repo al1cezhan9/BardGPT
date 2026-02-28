@@ -36,9 +36,9 @@ if prompt == "":
 else:
     context = torch.tensor([encode(prompt)], dtype=torch.long, device=device)
 
-max_new_tokens = input("Enter the number of tokens you would like to generate (or press Enter for defulat): ")
+max_new_tokens = input("Enter the number of tokens you would like to generate (or press Enter for default): ")
 if max_new_tokens == "":
-    max_new_tokens=0
+    max_new_tokens=500
 else:
     max_new_tokens = int(max_new_tokens)
 
