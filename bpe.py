@@ -28,7 +28,7 @@ def merge_vocab(pair, v_in):
     return v_out
 
 
-# only train tokenizer if called explicitly
+# only train tokenizer if 'python bpe.py' is called explicitly
 if __name__ == '__main__':
     # load / prep data
     with open('input.txt', 'r', encoding='utf-8') as f:
