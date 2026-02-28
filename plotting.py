@@ -1,5 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
+import os
 
 # 1. Load the time capsule
 checkpoint = torch.load('checkpoint_best.pth', map_location='cpu')
@@ -19,4 +20,9 @@ plt.xlabel('Iterations')
 plt.ylabel('Cross Entropy Loss')
 plt.legend()
 plt.grid(True, linestyle='--', alpha=0.6)
+
+save_location = os.path.join(os.getcwd(), 'plots', 'trainvalloss.png')
+plt.savefig(save_location)
+
 plt.show()
+
