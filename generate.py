@@ -45,7 +45,7 @@ saved_args = checkpoint['config']
 config = GPTConfig(**saved_args, vocab_size=vocab_size) 
 
 # build the model using the blueprint, then load weights
-model = GPT(config) # THE INITIALIZATION FIX
+model = GPT(config) 
 model.load_state_dict(checkpoint['model_state_dict'])
 model.to(device)
 model.eval()
