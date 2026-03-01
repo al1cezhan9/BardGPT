@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 # 1. Load the time capsule
-checkpoint = torch.load('checkpoint_best.pth', map_location='cpu')
+checkpoint = torch.load('model/checkpoint_best.pth', map_location='cpu')
 metrics = checkpoint['metrics']
 
 # 2. Extract the data

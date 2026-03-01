@@ -11,14 +11,14 @@ temperature = 1.0
 top_k = 10
 
 # load the flat BPE vocabulary
-with open('vocab.json', 'r', encoding='utf-8') as f:
+with open('model/vocab.json', 'r', encoding='utf-8') as f:
     stoi = json.load(f)
 
 itos = {int(i): s for s, i in stoi.items()}
 vocab_size = len(stoi)
 
 # load merge rules
-with open("merges.txt", "r", encoding="utf-8") as f:
+with open("model/merges.txt", "r", encoding="utf-8") as f:
     bpe_merges = f.read().split('\n')[:-1] 
 merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
 
@@ -42,8 +42,8 @@ else:
     to_generate = int(to_generate)
 
 # load checkpoint
-checkpoint_path = 'transformer.pth'
-checkpoint = torch.load(checkpoint_path, map_location=device)
+checkpoint_path = 'model/transformer.pth'
+checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
 # extract saved config dictionary and rebuild the blueprint
 saved_args = checkpoint['config']
@@ -136,5 +136,5 @@ def plot_generation_speed():
 
 stream_generate()
 dump_generate()
-plot_generation_speed()
+# plot_generation_speed()
 

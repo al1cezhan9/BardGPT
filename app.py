@@ -1,7 +1,8 @@
 import streamlit as st
 import torch
 import json
-from model import GPT
+from model import GPT, GPTConfig
+from generate import bpe_encode, bpe_decode
 
 # -- Page Config --
 st.set_page_config(page_title="Shakespeare GPT", page_icon="")
@@ -11,20 +12,30 @@ st.markdown("A character-level transformer playground.")
 # -- Load Assets (Cached) --
 @st.cache_resource
 def load_model():
-    with open('vocab.json', 'r') as f:
-        meta = json.load(f)
+    # 1. Load the flat BPE vocabulary
+    with open('model/vocab.json', 'r', encoding='utf-8') as f:
+        stoi = json.load(f)
+    itos = {int(i): s for s, i in stoi.items()}
+    vocab_size = len(stoi)
+
+    # 2. Load the BPE merge rules
+    with open("model/merges.txt", "r", encoding="utf-8") as f:
+        bpe_merges = f.read().split('\n')[:-1] 
+    merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
+
+    # 3. Setup BPE Wrappers
+    encode = lambda s: bpe_encode(s, stoi, merges_dict)
+    decode = lambda l: bpe_decode(l, itos)
     
-    # Setup mapping
-    stoi = meta['stoi']
-    itos = {int(k): v for k, v in meta['itos'].items()}
-    encode = lambda s: [stoi[c] for c in s if c in stoi]
-    decode = lambda l: ''.join([itos[i] for i in l])
+    # 4. Reconstruct Model using the new GPTConfig
+    checkpoint = torch.load('model/transformer.pth', map_location='cpu', weights_only=False)
+    saved_args = checkpoint['config']
+    config = GPTConfig(**saved_args, vocab_size=vocab_size) 
     
-    # Reconstruct Model
-    model = GPT(meta['vocab_size'])
-    checkpoint = torch.load('transformer.pth', map_location='cpu')
+    model = GPT(config)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
+    
     return model, encode, decode
 
 model, encode, decode = load_model()
