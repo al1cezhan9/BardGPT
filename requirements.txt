@@ -2,4 +2,4 @@ torch
 fastapi
 uvicorn
 pydantic
-streamlit
+# streamlit
