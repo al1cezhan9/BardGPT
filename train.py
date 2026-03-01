@@ -4,7 +4,6 @@ from model import GPT, GPTConfig
 import json
 import math
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
-from transformers import get_cosine_schedule_with_warmup
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from bpe import encode, decode
 
