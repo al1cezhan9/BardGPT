@@ -1,5 +1,8 @@
 torch
+regex
 fastapi
 uvicorn
 pydantic
+# onnxruntime
+# numpy
 # streamlit
