@@ -25,7 +25,8 @@
             container.innerHTML = ''; 
             
             // 1. Fetch the FULL data from the API including prompt tokens
-            const response = await fetch(`http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}`);
+            // const response = await fetch(`http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}`);
+            const response = await fetch(`/generate?prompt=${encodeURIComponent(prompt)}`);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             

@@ -1,12 +1,14 @@
 import torch
 import json
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from model import GPT, GPTConfig
 from bpe import encode as bpe_encode
 from bpe import decode as bpe_decode
 from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 
 
 
@@ -44,11 +46,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
-async def root_redirect():
-    return RedirectResponse(url="/generate")
+async def read_index():
+    return FileResponse('static/index.html')
 
 
 @app.get("/generate")
