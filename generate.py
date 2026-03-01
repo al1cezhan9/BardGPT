@@ -137,7 +137,23 @@ def plot_generation_speed():
     plt.savefig(save_location)
     plt.show()
 
-stream_generate()
-dump_generate()
+# stream_generate()
+# dump_generate()
 # plot_generation_speed()
 
+
+# # load your trained model
+# model.load_state_dict(torch.load("model.pt"))
+# model.eval()
+
+# # example input with correct shape
+# dummy_input = ???  # change to your input shape
+
+# torch.onnx.export(
+#     model,
+#     dummy_input,
+#     "model.onnx",
+#     input_names=["input"],
+#     output_names=["output"],
+#     dynamic_axes={"input": {0: "batch_size"}}
+# )
