@@ -13,7 +13,19 @@
 <body>
     <h1>BardGPT</h1>
     <input type="text" id="prompt-input" value="ROMEO: ">
-    <button onclick="generate()">Generate</button>
+    <div class="controls">
+        <label>Tokens:</label>
+        <input type="number" id="token-count" value="100" min="1" max="1000">
+
+        <label>Temperature:</label>
+        <input type="range" id="temp-slider" min="0.1" max="2.0" step="0.1" value="0.8">
+        
+        <span id="temp-value" style="font-weight: bold; color: #ffffff;">0.8</span>
+
+        <button onclick="generate()">Generate</button>
+    </div>
+    
+    
     <div id="container" onmouseleave="clearAttn()"></div>
 
     <script>
@@ -21,12 +33,18 @@
         
         async function generate() {
             const prompt = document.getElementById('prompt-input').value;
+            // --- NEW STUFF ---
+            const length = document.getElementById('token-count').value;
+            const temp = document.getElementById('temp-slider').value;
+            
             const container = document.getElementById('container');
             container.innerHTML = ''; 
             
-            // 1. Fetch the FULL data from the API including prompt tokens
-            // const response = await fetch(`http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}`);
-            const response = await fetch(`/generate?prompt=${encodeURIComponent(prompt)}`);
+            // Add the new variables to the URL string
+            const url = `http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
+            const response = await fetch(url);
+            // -----------------
+
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             
@@ -45,11 +63,10 @@
                     if (!line.trim()) continue;
                     const data = JSON.parse(line);
                     
-                    // 2. USE THE INDEX FROM THE BACKEND (If provided) 
-                    // OR ensure this loop accounts for prompt tokens correctly
+                    // ensure this loop accounts for prompt tokens correctly
                     const span = document.createElement('span');
                     span.className = 'tok';
-                    span.id = `t-${tokenIndex}`; // This must match the index in data.attn
+                    span.id = `t-${tokenIndex}`;
                     span.innerText = data.text;
                     
                     const thisAttn = data.attn;
@@ -61,6 +78,7 @@
                 }
             }
         }
+        
 
         function showAttn(attnMatrix) {
             // attnMatrix shape: [n_heads, seq_len] from GPTConfig.n_head
@@ -92,6 +110,14 @@
                 tokens[i].style.color = '#ddd'; 
             }
         }
+        
+        const tempSlider = document.getElementById('temp-slider');
+        const tempValue = document.getElementById('temp-value');
+        // listen for 'input' events (triggers while dragging)
+        tempSlider.oninput = function() {
+            // update the text to match the slider's current value
+            tempValue.innerText = this.value;
+        };
     </script>
 </body>
 </html>
