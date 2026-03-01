@@ -18,8 +18,7 @@ with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:
     stoi = json.load(f)
 
 itos = {int(i): s for s, i in stoi.items()}
-vocab_size = len(stoi)
-modelpath = f"[{vocab_size}V]model"
+vocab_size = len(stoi) + 1
 
 # load merge rules
 with open(f"{modelID}model/merges.txt", "r", encoding="utf-8") as f:
@@ -46,7 +45,7 @@ else:
     to_generate = int(to_generate)
 
 # load checkpoint
-checkpoint_path = 'f"{modelpath}model/transformer.pth'
+checkpoint_path = f"{modelID}model/transformer.pth"
 checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
 # extract saved config dictionary and rebuild the blueprint

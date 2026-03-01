@@ -9,7 +9,7 @@ from bpe import encode, decode
 
 # --hyperparams--
 batch_size = 64 # independent sequences processed in parallel
-max_iters = 10000 # total num iterations of training 
+max_iters = 2500 # total num iterations of training 
 eval_interval = 100 # how often we check loss during training
 eval_iters = 100 # how many batches to eval loss on before GD
 learning_rate = 3e-4
@@ -113,38 +113,43 @@ scaler_enabled = (device == 'cuda' and ptdtype == torch.float16)
 scaler = torch.amp.GradScaler(enabled=scaler_enabled)
 
 
-for iter in range(start_iter, max_iters):
-  if iter % eval_interval == 0:
-    losses = estimate_loss()
-    scheduler.step(losses['val'])
-    print(f"step # {iter} \n    train loss: {losses['train']:.4f} || val loss: {losses['val']:.4f} || train perp: {math.exp(losses['train']):.4f} || val perp: {math.exp(losses['val']):.4f}")
-    metrics['iters'].append(iter)
-    metrics['train_loss'].append(losses['train'])
-    metrics['val_loss'].append(losses['val'])
-    checkpoint = {
-        'iter': iter,
-        'model_state_dict': m.state_dict(), # dict w/ string names -> raw tensor matrices
-        'optimizer_state_dict': optimizer.state_dict(),
-        'scheduler_state_dict': scheduler.state_dict(),
-        'metrics': metrics,
-        'config': {'block_size': m.config.block_size, 'n_embd': m.config.n_embd, 'n_layer': m.config.n_layer, 'n_head': m.config.n_head}
-    }
-    torch.save(checkpoint, f'{modelID}model/checkpoint_latest.pth')
-    if losses['val'] < best_val_loss:
-      best_val_loss = losses['val']
-      torch.save(checkpoint, f'{modelID}model/checkpoint_best.pth')
-      print(f"New best model saved at iter {iter}!")
+try:
+    for iter in range(start_iter, max_iters):
+        if iter % eval_interval == 0:
+            losses = estimate_loss()
+            scheduler.step(losses['val'])
+            print(f"step # {iter} \n    train loss: {losses['train']:.4f} || val loss: {losses['val']:.4f} || train perp: {math.exp(losses['train']):.4f} || val perp: {math.exp(losses['val']):.4f}")
+            metrics['iters'].append(iter)
+            metrics['train_loss'].append(losses['train'])
+            metrics['val_loss'].append(losses['val'])
+            checkpoint = {
+                'iter': iter,
+                'model_state_dict': m.state_dict(), # dict w/ string names -> raw tensor matrices
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'metrics': metrics,
+                'config': {'block_size': m.config.block_size, 'n_embd': m.config.n_embd, 'n_layer': m.config.n_layer, 'n_head': m.config.n_head}
+            }
+            torch.save(checkpoint, f'{modelID}model/checkpoint_latest.pth')
+            if losses['val'] < best_val_loss:
+                best_val_loss = losses['val']
+                torch.save(checkpoint, f'{modelID}model/checkpoint_best.pth')
+                print(f"New best model saved at iter {iter}!")
 
-  xb, yb = get_batch('train', )
-  optimizer.zero_grad(set_to_none=True) # zero out grads
-  with torch.autocast(device_type=device, dtype=ptdtype):
-    logits, loss = m(xb, yb) # mixed precision handling
-  scaler.scale(loss).backward() # amplify loss, get grads for each
-  scaler.unscale_(optimizer) # unscale grads
-  torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0) # clip exploding grads 
-  scaler.step(optimizer) # use grad to update params
-  scaler.update() 
+        xb, yb = get_batch('train', )
+        optimizer.zero_grad(set_to_none=True) # zero out grads
+        with torch.autocast(device_type=device, dtype=ptdtype):
+            logits, loss = m(xb, yb) # mixed precision handling
+        scaler.scale(loss).backward() # amplify loss, get grads for each
+        scaler.unscale_(optimizer) # unscale grads
+        torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0) # clip exploding grads 
+        scaler.step(optimizer) # use grad to update params
+        scaler.update() 
+        
+except KeyboardInterrupt:
+    print("\nTraining interrupted by user. Saving current state...")
 
+# This code runs whether the loop finishes OR is interrupted
 checkpoint = {
     'iter': iter,
     'model_state_dict': m.state_dict(),
@@ -155,3 +160,4 @@ checkpoint = {
 }
 torch.save(checkpoint, f'{modelID}model/transformer.pth')
 print("Model weights saved!")
+

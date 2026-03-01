@@ -14,7 +14,7 @@ def load_assets():
     with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:
         stoi = json.load(f)
     itos = {int(i): s for s, i in stoi.items()}
-    vocab_size = len(stoi)
+    vocab_size = len(stoi) + 1
     
     with open(f"{modelID}model/merges.txt", "r", encoding="utf-8") as f:
         bpe_merges = f.read().split('\n')[:-1] 
