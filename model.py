@@ -6,11 +6,11 @@ from dataclasses import dataclass
 @dataclass
 class GPTConfig:
     block_size: int = 256 # context length, 1-256 predict 257
-    vocab_size: int = 314 # BPE size
-    n_layer: int = 4
+    vocab_size: int = 1064 # BPE size
+    n_layer: int = 6
     n_head: int = 4 
-    n_embd: int = 128 # embedding dimensions
-    dropout: float = 0.2 # randomly sever connections during training -> mimic ensemble
+    n_embd: int = 256 # embedding dimensions
+    dropout: float = 0.3 # randomly sever connections during training -> mimic ensemble
 
 class Head(nn.Module):
   def __init__(self, config, head_size):
@@ -22,7 +22,7 @@ class Head(nn.Module):
     # tril is not a param of model, it's a buffer
     self.register_buffer('tril', torch.tril(torch.ones(config.block_size, config.block_size)))
 
-  def forward(self, x):
+  def forward(self, x, return_attn=False):
     B,T,C = x.shape
     k = self.key(x)
     q = self.query(x)
@@ -32,7 +32,8 @@ class Head(nn.Module):
     wei = F.softmax(wei, dim=-1)
     wei = self.dropout(wei)
     out = wei @ v
-    return out
+    attn_weights = wei if return_attn else None
+    return out, attn_weights
   
 class MultiHeadAttention(nn.Module):
   def __init__(self, config):
@@ -43,9 +44,15 @@ class MultiHeadAttention(nn.Module):
     self.proj = nn.Linear(concatenated_dim, config.n_embd)
     self.dropout = nn.Dropout(config.dropout)
   
-  def forward(self, x):
-    out = torch.cat([h(x) for h in self.heads], dim=-1)
-    return self.dropout(self.proj(out)) # project layer outcome back onto main highway
+  def forward(self, x, return_attn=False):
+    head_outputs = [h(x, return_attn=return_attn) for h in self.heads]
+    out = torch.cat([res[0] for res in head_outputs], dim=-1)
+    attns = None
+    if return_attn:
+        # Stack weights: (num_heads, B, T, T)
+        attns = torch.stack([res[1] for res in head_outputs]) 
+    # project layer outcome back onto main highway
+    return self.dropout(self.proj(out)), attns
 
 # done independently on a token-level basis
 class FeedForward(nn.Module):
@@ -67,11 +74,12 @@ class Block(nn.Module):
     self.ffwd = FeedForward(config)
     self.ln1 = nn.LayerNorm(config.n_embd)
     self.ln2 = nn.LayerNorm(config.n_embd)
-  def forward(self, x):
+  def forward(self, x, return_attn=False):
     # residual streams enable clean backprop
-    x = x + self.sa(self.ln1(x))
+    sa_out, attns = self.sa(self.ln1(x), return_attn=return_attn)
+    x = x + sa_out
     x = x + self.ffwd(self.ln2(x))
-    return x
+    return x, attns
   
 class GPT(nn.Module):
   
@@ -80,9 +88,7 @@ class GPT(nn.Module):
     self.config = config
     self.token_embedding_table = nn.Embedding(config.vocab_size, config.n_embd)
     self.position_embedding_table = nn.Embedding(config.block_size, config.n_embd)
-    self.blocks = nn.Sequential(
-      *[Block(config) for _ in range(config.n_layer)],
-    )
+    self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_layer)])
     self.ln_f = nn.LayerNorm(config.n_embd)
     # go from token embed -> logits
     self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
@@ -100,24 +106,29 @@ class GPT(nn.Module):
     elif isinstance(module, nn.Embedding):
         torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-  def forward(self, idx, targets=None):
+  def forward(self, idx, targets=None, return_attn=False):
     B,T=idx.shape
     # idx and targets are both (B,T) tensor
     tok_embd = self.token_embedding_table(idx) # (B,T,n_embd)
     pos_embd = self.position_embedding_table(torch.arange(T, device=idx.device)) # (T,n_embd)
     x = tok_embd + pos_embd
-    x = self.blocks(x)
+
+    last_attns = None
+    for i, block in enumerate(self.blocks):
+        # If it's the last block and we want weights, capture them
+        is_last = (i == len(self.blocks) - 1)
+        x, attns = block(x, return_attn=(return_attn and is_last))
+        if is_last:
+            last_attns = attns
+
     x = self.ln_f(x) # final cleanup after stacking residuals
     logits = self.lm_head(x) 
 
-    if targets is None:
-        loss = None
-    else:
-        # python wants (B,C,T) instead
-        # stretch out into 2D array
+    loss = None
+    if targets is not None:
         B, T, C = logits.shape
         loss = F.cross_entropy(logits.view(B*T, C), targets.view(B*T))
-    return logits, loss
+    return (logits, loss, last_attns) if return_attn else (logits, loss)
   
   def generate(self, idx, max_new_tokens, temperature=1.0):
     # idx = (B, T) array of indices rn
@@ -136,4 +147,23 @@ class GPT(nn.Module):
       # append sampled index to running sequence
       idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
     return idx
-  
+
+  def generate_stream(self, idx, max_new_tokens, temperature=1.0):
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -self.config.block_size:]
+        
+        # Call forward with return_attn=True
+        # Returns: (logits, loss, last_attns)
+        logits, _, attn = self.forward(idx_cond, return_attn=True)
+        
+        logits = logits[:, -1, :] / temperature
+        probs = F.softmax(logits, dim=-1)
+        idx_next = torch.multinomial(probs, num_samples=1)
+        
+        # attn shape is (n_head, B, T, T)
+        # We want the last token's attention: (n_head, all_prev_tokens)
+        token_attn = attn[:, 0, -1, :].tolist() 
+        
+        yield idx_next.item(), token_attn
+        
+        idx = torch.cat((idx, idx_next), dim=1)

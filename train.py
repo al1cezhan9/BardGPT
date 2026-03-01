@@ -9,25 +9,28 @@ from bpe import encode, decode
 
 # --hyperparams--
 batch_size = 64 # independent sequences processed in parallel
-max_iters = 11000 # total num iterations of training 
+max_iters = 10000 # total num iterations of training 
 eval_interval = 100 # how often we check loss during training
-eval_iters = 200 # how many batches to eval loss on before GD
+eval_iters = 100 # how many batches to eval loss on before GD
 learning_rate = 3e-4
 torch.manual_seed(1337)
 print(f"Device: {device}")
 
+modelID = '[1064V]'
+
 # load trained BPE vocab, merge rules, dataset
-with open("model/vocab.json", "r", encoding="utf-8") as f:
+with open(f"{modelID}model/vocab.json", "r", encoding="utf-8") as f:
   stoi = json.load(f)
-with open("model/merges.txt", "r", encoding="utf-8") as f:
-  bpe_merges = f.read().split('\n')[:-1] # read lines, drop trailing empty line
-with open('model/input.txt', 'r', encoding='utf-8') as f:
-  text = f.read()
 
 # define reverse mapping + vocab_size
 itos = {int(i): s for s, i in stoi.items()} 
-vocab_size = len(stoi)
+vocab_size = len(stoi) + 1
 print(f"Baseline untrained loss = {math.log(vocab_size)}")
+
+with open(f"{modelID}model/merges.txt", "r", encoding="utf-8") as f:
+  bpe_merges = f.read().split('\n')[:-1] # read lines, drop trailing empty line
+with open('input.txt', 'r', encoding='utf-8') as f:
+  text = f.read()
 
 # rebuild the dict: (chunk1, chunk2) -> priority rank
 merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
@@ -74,7 +77,7 @@ optimizer = torch.optim.AdamW(m.parameters(), lr=learning_rate, weight_decay=0.1
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
 
 # altered from transformer.pth
-checkpoint_path = 'model/transformer.pth'
+checkpoint_path = f'{modelID}model/transformer.pth'
 
 if os.path.exists(checkpoint_path):
     print(f"Loading existing weights from {checkpoint_path}...")
@@ -126,10 +129,10 @@ for iter in range(start_iter, max_iters):
         'metrics': metrics,
         'config': {'block_size': m.config.block_size, 'n_embd': m.config.n_embd, 'n_layer': m.config.n_layer, 'n_head': m.config.n_head}
     }
-    torch.save(checkpoint, 'model/checkpoint_latest.pth')
+    torch.save(checkpoint, f'{modelID}model/checkpoint_latest.pth')
     if losses['val'] < best_val_loss:
       best_val_loss = losses['val']
-      torch.save(checkpoint, 'model/checkpoint_best.pth')
+      torch.save(checkpoint, f'{modelID}model/checkpoint_best.pth')
       print(f"New best model saved at iter {iter}!")
 
   xb, yb = get_batch('train', )
@@ -150,5 +153,5 @@ checkpoint = {
     'metrics': metrics,
     'config': {'block_size': m.config.block_size, 'n_embd': m.config.n_embd, 'n_layer': m.config.n_layer, 'n_head': m.config.n_head}
 }
-torch.save(checkpoint, 'model/transformer.pth')
+torch.save(checkpoint, f'{modelID}model/transformer.pth')
 print("Model weights saved!")

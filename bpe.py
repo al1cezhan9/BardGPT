@@ -2,6 +2,8 @@ import regex as re
 import json
 import collections
 
+modelID = '[1064V]'
+
 # REGEX split to keep words separate
 GPT_REGEX = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
@@ -46,7 +48,8 @@ if __name__ == '__main__':
         vocab[' '.join(list(safe_word))] += 1
 
     # BPE learning loop
-    num_merges = 250 # target vocabulary size increase (tune?)
+    num_merges = 1000 # target vocabulary size increase (tune?)
+    vocab_size = num_merges + len(set(text)) - 1
     # (chunk1, chunk2) -> priority
     merges = {}
 
@@ -75,16 +78,16 @@ if __name__ == '__main__':
     stoi = {s: i for i, s in enumerate(subwords)} # chunk -> ID
     itos = {i: s for s, i in stoi.items()}        # ID -> chunk
     # save
-    with open("vocab.json", "w", encoding="utf-8") as f:
+    with open(f"{modelID}model/vocab.json", "w", encoding="utf-8") as f:
         json.dump(stoi, f, ensure_ascii=False, indent=2)
-    with open("merges.txt", "w", encoding="utf-8") as f:
+    with open(f"{modelID}model/merges.txt", "w", encoding="utf-8") as f:
         for pair in merges.keys():
             f.write(f"{pair[0]} {pair[1]}\n")
     print("BPE Training Complete. Vocabulary densified.")
     print(f"Final Vocab Size: {len(subwords)}") # should be initial alphabet + num merges
     print(f"Our Chunks: {subwords}")
 
-# to be used in train.py
+# to be used in many other places
 def decode(ids, itos): # trivial
     """translate list of int IDs -> single string"""
     # look up each ID, get the str, and join 

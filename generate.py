@@ -7,18 +7,22 @@ import os
 import matplotlib.pyplot as plt
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 
+modelID = '[1064V]'
+
 temperature = 1.0
 top_k = 10
 
 # load the flat BPE vocabulary
-with open('model/vocab.json', 'r', encoding='utf-8') as f:
+## MANUAL CHANGE!!!!
+with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:
     stoi = json.load(f)
 
 itos = {int(i): s for s, i in stoi.items()}
 vocab_size = len(stoi)
+modelpath = f"[{vocab_size}V]model"
 
 # load merge rules
-with open("model/merges.txt", "r", encoding="utf-8") as f:
+with open(f"{modelID}model/merges.txt", "r", encoding="utf-8") as f:
     bpe_merges = f.read().split('\n')[:-1] 
 merges_dict = {tuple(pair.split()): i for i, pair in enumerate(bpe_merges)}
 
@@ -42,7 +46,7 @@ else:
     to_generate = int(to_generate)
 
 # load checkpoint
-checkpoint_path = 'model/transformer.pth'
+checkpoint_path = 'f"{modelpath}model/transformer.pth'
 checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
 # extract saved config dictionary and rebuild the blueprint
@@ -66,28 +70,28 @@ def stream_generate():
     print('\n=======STREAMING=======')
     for _ in range(to_generate):  
         global context  
-        # 1. CROP: Ensure we don't exceed the model's maximum context length
+        # CROP: don't exceed model's maximum context length
         idx_cond = context[:, -config.block_size:]
         
-        # 2. FORWARD PASS: Feed the ENTIRE cropped sequence
-        # Note: We are using model() directly to get logits, bypassing model.generate()
+        # FORWARD PASS: Feed the ENTIRE cropped sequence
+        # using model() directly to get logits, bypassing model.generate()
         logits, _ = model(idx_cond)
         
-        # 3. PLUCK: We only care about the prediction for the very last timestep
+        # PLUCK: only care about the prediction for the very last timestep
         logits = logits[:, -1, :] / temperature # Shape becomes (B, C)
         
-        # 4. FILTER: Top-K to prevent sampling complete garbage
+        # FILTER: Top-K
         v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
         logits[logits < v[:, [-1]]] = -float('Inf')
         
-        # 5. SAMPLE: Convert to probabilities and pick the next token
+        # SAMPLE: Convert to probabilities and pick the next token
         probs = F.softmax(logits, dim=-1)
         next_token = torch.multinomial(probs, num_samples=1) # Shape (B, 1)
         
-        # 6. UPDATE: Append the new token to our running sequence
+        # UPDATE: Append the new token to running sequence
         context = torch.cat((context, next_token), dim=1)
         
-        # 7. STREAM: Decode just the single new token and print immediately
+        # STREAM: Decode just the single new token and print immediately
         word = decode([next_token.item()])
         print(word, end='', flush=True)
 

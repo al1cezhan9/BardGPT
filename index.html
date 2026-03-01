@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pay Attention!</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #ddd; padding: 2rem; }
+        #container { line-height: 1.6; font-size: 18px; border: 1px solid #444; padding: 20px; }
+        .tok { cursor: pointer; transition: background 0.1s; border-radius: 2px; }
+        .tok:hover { outline: 1px solid #b4d4ff; }
+        #prompt-input { width: 80%; padding: 10px; background: #333; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <h1>BardGPT</h1>
+    <input type="text" id="prompt-input" value="ROMEO: ">
+    <button onclick="generate()">Generate</button>
+    <div id="container" onmouseleave="clearAttn()"></div>
+
+    <script>
+        const container = document.getElementById('container');
+        
+        async function generate() {
+            const prompt = document.getElementById('prompt-input').value;
+            const container = document.getElementById('container');
+            container.innerHTML = ''; 
+            
+            // 1. Fetch the FULL data from the API including prompt tokens
+            const response = await fetch(`http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            
+            let tokenIndex = 0; 
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); 
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const data = JSON.parse(line);
+                    
+                    // 2. USE THE INDEX FROM THE BACKEND (If provided) 
+                    // OR ensure this loop accounts for prompt tokens correctly
+                    const span = document.createElement('span');
+                    span.className = 'tok';
+                    span.id = `t-${tokenIndex}`; // This must match the index in data.attn
+                    span.innerText = data.text;
+                    
+                    const thisAttn = data.attn;
+                    span.onmouseover = () => showAttn(thisAttn);
+                    span.onmouseout = () => clearAttn();
+                    
+                    container.appendChild(span);
+                    tokenIndex++; 
+                }
+            }
+        }
+
+        function showAttn(attnMatrix) {
+            // attnMatrix shape: [n_heads, seq_len] from GPTConfig.n_head
+            const numHeads = attnMatrix.length;
+            
+            // Calculate Mean Attention across all heads
+            const meanWeights = attnMatrix[0].map((_, i) => 
+                attnMatrix.reduce((acc, head) => acc + head[i], 0) / numHeads
+            );
+
+            meanWeights.forEach((weight, i) => {
+                const prevTok = document.getElementById(`t-${i}`);
+                if (prevTok) {
+                    // Amplify weight (multiplier 8) for high visual contrast
+                    const alpha = Math.min(weight * 8, 1.0);
+                    prevTok.style.backgroundColor = `rgba(194,195,255, ${alpha})`;
+                    // brighten text for high-attention tokens
+                    prevTok.style.color = alpha > 0.4 ? '#fff' : '#ddd';
+                }
+            });
+        }
+
+        function clearAttn() {
+            // Select all tokens and strip background styles
+            const tokens = document.querySelectorAll('.tok');
+            for (let i = 0; i < tokens.length; i++) {
+                tokens[i].style.backgroundColor = 'transparent';
+                // reset color
+                tokens[i].style.color = '#ddd'; 
+            }
+        }
+    </script>
+</body>
+</html>
