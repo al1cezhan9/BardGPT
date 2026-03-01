@@ -4,5 +4,5 @@ fastapi
 uvicorn
 pydantic
 # onnxruntime
-# numpy
+numpy
 # streamlit

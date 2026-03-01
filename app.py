@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from model import GPT, GPTConfig
 from bpe import encode as bpe_encode
 from bpe import decode as bpe_decode
+from fastapi.responses import RedirectResponse
+
+
 
 modelID = '[1064V]'
 
@@ -41,6 +44,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/generate")
+
 
 @app.get("/generate")
 async def generate(prompt: str = "ROMEO: ", length: int = 100, temp: float = 0.8):
