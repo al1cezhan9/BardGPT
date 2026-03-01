@@ -27,10 +27,25 @@ Run this to start training. If a transformer.pth exists, it will automatically r
 python train.py
 ```
 
-### 1. Training
-Run this to see the web app in action. 
+### 2. Deployment
+Run these on separate terminals to see the web app in action locally. 
 
 ```bash
-streamlit run app.py
+uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+python -m http.server 8080
+```
+
+### 3. Testing
+Run this to test the generation in your terminal. 
+
+```bash
+python generate.py
+```
+
+### 4. Vocab Adjustment
+Run this to adjust vocab size / number of merges (must re-train as well):
+
+```bash
+python bpe.py
 ```
 
