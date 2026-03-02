@@ -10,7 +10,7 @@ from bpe import decode as bpe_decode
 from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse
 
-modelID = '[1064V]'
+modelID = '[2048V]'
 
 def load_assets():
     with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:

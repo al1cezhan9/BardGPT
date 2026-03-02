@@ -2,7 +2,7 @@ import regex as re
 import json
 import collections
 
-modelID = '[1064V]'
+modelID = '[2048V]'
 
 # REGEX split to keep words separate
 GPT_REGEX = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
@@ -48,8 +48,8 @@ if __name__ == '__main__':
         vocab[' '.join(list(safe_word))] += 1
 
     # BPE learning loop
-    num_merges = 1000 # target vocabulary size increase (tune?)
-    vocab_size = num_merges + len(set(text)) - 1
+    num_merges = 1984 # target vocabulary size increase (tune?)
+    vocab_size = num_merges + len(set(text))
     # (chunk1, chunk2) -> priority
     merges = {}
 

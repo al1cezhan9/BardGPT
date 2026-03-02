@@ -7,13 +7,12 @@ import os
 import matplotlib.pyplot as plt
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 
-modelID = '[1064V]'
+modelID = '[2048V]'
 
 temperature = 1.0
 top_k = 10
 
 # load the flat BPE vocabulary
-## MANUAL CHANGE!!!!
 with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:
     stoi = json.load(f)
 

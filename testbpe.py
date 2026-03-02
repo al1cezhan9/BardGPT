@@ -1,7 +1,7 @@
 import json
 from bpe import encode, decode
 
-modelID = '[1064V]'
+modelID = '[2048V]'
 
 # 1. Load the exact state your train.py will use
 with open(f"{modelID}model/vocab.json", "r", encoding="utf-8") as f:

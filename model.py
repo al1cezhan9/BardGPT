@@ -6,7 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class GPTConfig:
     block_size: int = 256 # context length, 1-256 predict 257
-    vocab_size: int = 1064 # BPE size
+    vocab_size: int = 2048 # BPE size
     n_layer: int = 6
     n_head: int = 4 
     n_embd: int = 256 # embedding dimensions

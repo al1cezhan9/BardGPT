@@ -2,7 +2,7 @@ import torch
 import matplotlib.pyplot as plt
 import os
 
-modelID = '[1064V]'
+modelID = '[2048V]'
 
 # 1. Load the time capsule
 checkpoint = torch.load(f'{modelID}model/checkpoint_best.pth', map_location='cpu')

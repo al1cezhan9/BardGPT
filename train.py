@@ -9,14 +9,15 @@ from bpe import encode, decode
 
 # --hyperparams--
 batch_size = 64 # independent sequences processed in parallel
-max_iters = 2500 # total num iterations of training 
+max_iters = 2000 # total num iterations of training 
 eval_interval = 100 # how often we check loss during training
 eval_iters = 100 # how many batches to eval loss on before GD
 learning_rate = 3e-4
 torch.manual_seed(1337)
 print(f"Device: {device}")
 
-modelID = '[1064V]'
+modelID = '[2048V]'
+
 
 # load trained BPE vocab, merge rules, dataset
 with open(f"{modelID}model/vocab.json", "r", encoding="utf-8") as f:

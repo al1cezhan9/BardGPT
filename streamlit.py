@@ -4,7 +4,7 @@ import json
 from model import GPT, GPTConfig
 from generate import bpe_encode, bpe_decode
 
-modelID = '[1064V]'
+modelID = '[2048V]'
 
 # -- Page Config --
 st.set_page_config(page_title="Shakespeare GPT", page_icon="")
