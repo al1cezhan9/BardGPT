@@ -33,7 +33,6 @@
         
         async function generate() {
             const prompt = document.getElementById('prompt-input').value;
-            // --- NEW STUFF ---
             const length = document.getElementById('token-count').value;
             const temp = document.getElementById('temp-slider').value;
             
@@ -43,7 +42,6 @@
             // Add the new variables to the URL string
             const url = `http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
             const response = await fetch(url);
-            // -----------------
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -70,7 +68,8 @@
                     span.innerText = data.text;
                     
                     const thisAttn = data.attn;
-                    span.onmouseover = () => showAttn(thisAttn);
+                    const currentTokenIndex = tokenIndex; // Capture the exact index for the closure
+                    span.onmouseover = () => showAttn(thisAttn, currentTokenIndex);
                     span.onmouseout = () => clearAttn();
                     
                     container.appendChild(span);
@@ -80,27 +79,28 @@
         }
         
 
-        function showAttn(attnMatrix) {
-            // attnMatrix shape: [n_heads, seq_len] from GPTConfig.n_head
+        function showAttn(attnMatrix, targetTokenIndex) {
             const numHeads = attnMatrix.length;
+            const seqLen = attnMatrix[0].length;
             
-            // Calculate Mean Attention across all heads
+            // Calculate where the context window started
+            const offset = Math.max(0, targetTokenIndex - seqLen); 
+
             const meanWeights = attnMatrix[0].map((_, i) => 
                 attnMatrix.reduce((acc, head) => acc + head[i], 0) / numHeads
             );
 
             meanWeights.forEach((weight, i) => {
-                const prevTok = document.getElementById(`t-${i}`);
+                const absoluteIndex = offset + i; // Apply the offset!
+                const prevTok = document.getElementById(`t-${absoluteIndex}`);
+                
                 if (prevTok) {
-                    // Amplify weight (multiplier 8) for high visual contrast
                     const alpha = Math.min(weight * 8, 1.0);
                     prevTok.style.backgroundColor = `rgba(194,195,255, ${alpha})`;
-                    // brighten text for high-attention tokens
                     prevTok.style.color = alpha > 0.4 ? '#fff' : '#ddd';
                 }
             });
         }
-
         function clearAttn() {
             // Select all tokens and strip background styles
             const tokens = document.querySelectorAll('.tok');
