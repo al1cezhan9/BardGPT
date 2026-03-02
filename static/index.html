@@ -90,12 +90,17 @@
                 attnMatrix.reduce((acc, head) => acc + head[i], 0) / numHeads
             );
 
+            const maxWeight = Math.max(...meanWeights);
+
             meanWeights.forEach((weight, i) => {
                 const absoluteIndex = offset + i; // Apply the offset!
                 const prevTok = document.getElementById(`t-${absoluteIndex}`);
                 
                 if (prevTok) {
-                    const alpha = Math.min(weight * 8, 1.0);
+                    // The highest attended token always gets alpha = 1.0
+                    const alpha = maxWeight > 0 ? (weight / maxWeight) : 0;
+                    // absolute / no normalization, attention stronger when context window not saturated
+                    // const alpha = Math.min(weight * 8, 1.0);
                     prevTok.style.backgroundColor = `rgba(194,195,255, ${alpha})`;
                     prevTok.style.color = alpha > 0.4 ? '#fff' : '#ddd';
                 }
