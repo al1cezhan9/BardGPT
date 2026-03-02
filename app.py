@@ -10,8 +10,6 @@ from bpe import decode as bpe_decode
 from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse
 
-
-
 modelID = '[1064V]'
 
 def load_assets():
@@ -46,8 +44,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")

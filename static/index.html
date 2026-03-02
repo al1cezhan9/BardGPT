@@ -12,7 +12,6 @@
 </head>
 <body>
     <h1>BardGPT</h1>
-    <input type="text" id="prompt-input" value="ROMEO: ">
     <div class="controls">
         <label>Tokens:</label>
         <input type="number" id="token-count" value="100" min="1" max="1000">
@@ -25,6 +24,7 @@
         <button onclick="generate()">Generate</button>
     </div>
     
+    <input type="text" id="prompt-input" value="ROMEO: ">
     
     <div id="container" onmouseleave="clearAttn()"></div>
 
@@ -68,7 +68,7 @@
                     span.innerText = data.text;
                     
                     const thisAttn = data.attn;
-                    const currentTokenIndex = tokenIndex; // Capture the exact index for the closure
+                    const currentTokenIndex = tokenIndex; // get the exact index for the closure
                     span.onmouseover = () => showAttn(thisAttn, currentTokenIndex);
                     span.onmouseout = () => clearAttn();
                     
