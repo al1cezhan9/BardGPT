@@ -9,11 +9,18 @@ from bpe import encode as bpe_encode
 from bpe import decode as bpe_decode
 from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+import uvicorn
 
 modelID = '[2048V]'
-# device = 'mps' if torch.backends.mps.is_available() else 'cpu'
-device = 'cpu'
+if torch.cuda.is_available():
+    device = 'cuda'
+elif torch.backends.mps.is_available():
+    device = 'mps'
+else:
+    device = 'cpu'
 
+print(f"--- Running on device: {device} ---")
 def load_assets():
     with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:
         stoi = json.load(f)

@@ -54,7 +54,10 @@
             btn.innerText = 'Generating...';
             
             try {
-                const url = `http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
+                // const url = `http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
+                const url = `https://bardgpt-vh9h.onrender.com/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
+                // const url = `/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
+                
                 const response = await fetch(url);
 
                 // Throw an error if the server responds with a 404, 500, etc.
