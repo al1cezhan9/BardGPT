@@ -65,31 +65,30 @@ def dump_generate():
     print(decode(generated_indices[0].tolist()))
 
 def stream_generate():
-    print('\n=======STREAMING=======')
     for _ in range(to_generate):  
         global context  
         # CROP: don't exceed model's maximum context length
         idx_cond = context[:, -config.block_size:]
         
-        # FORWARD PASS: Feed the ENTIRE cropped sequence
+        # Forward pass: Feed the entire cropped sequence
         # using model() directly to get logits, bypassing model.generate()
         logits, _ = model(idx_cond)
         
-        # PLUCK: only care about the prediction for the very last timestep
+        # Pluck: only care about the prediction for the very last timestep
         logits = logits[:, -1, :] / temperature # Shape becomes (B, C)
         
-        # FILTER: Top-K
+        # Filter: Top-K
         v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
         logits[logits < v[:, [-1]]] = -float('Inf')
         
-        # SAMPLE: Convert to probabilities and pick the next token
+        # Sample: Convert to probabilities and pick the next token
         probs = F.softmax(logits, dim=-1)
         next_token = torch.multinomial(probs, num_samples=1) # Shape (B, 1)
         
-        # UPDATE: Append the new token to running sequence
+        # Update: Append the new token to running sequence
         context = torch.cat((context, next_token), dim=1)
         
-        # STREAM: Decode just the single new token and print immediately
+        # Stream: Decode just the single new token and print immediately
         word = decode([next_token.item()])
         print(word, end='', flush=True)
 
@@ -136,8 +135,9 @@ def plot_generation_speed():
     plt.savefig(save_location)
     plt.show()
 
-# stream_generate()
+stream_generate()
 # dump_generate()
+
 # plot_generation_speed()
 
 

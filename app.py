@@ -11,6 +11,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse
 
 modelID = '[2048V]'
+device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 
 def load_assets():
     with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:
@@ -25,10 +26,12 @@ def load_assets():
     _encode = lambda s: bpe_encode(s, stoi, merges_dict)
     _decode = lambda l: bpe_decode(l, itos)
     
-    checkpoint = torch.load(f'{modelID}model/transformer.pth', map_location='cpu', weights_only=False)
+    
+    checkpoint = torch.load(f'{modelID}model/transformer.pth', map_location=device, weights_only=False)
     config = GPTConfig(**checkpoint['config'], vocab_size=vocab_size) 
     _model = GPT(config)
     _model.load_state_dict(checkpoint['model_state_dict'])
+    _model.to(device) # Move weights to MPS
     _model.eval()
     
     return _model, _encode, _decode, config
@@ -58,7 +61,7 @@ async def generate(prompt: str = "ROMEO: ", length: int = 100, temp: float = 0.8
             tokens = [204] # can tinker with the default start token by checking out the covab from bpe.py
         else:
             tokens = encode(prompt)
-        context = torch.tensor([tokens], dtype=torch.long) #
+        context = torch.tensor([tokens], dtype=torch.long, device=device)
 
         # Send the prompt tokens to the UI so indices match
         for i, t_id in enumerate(tokens):
@@ -76,6 +79,6 @@ async def generate(prompt: str = "ROMEO: ", length: int = 100, temp: float = 0.8
                 "attn": attn
             }
             yield json.dumps(data) + "\n"
-            context = torch.cat((context, torch.tensor([[token_id]])), dim=1) #
+            context = torch.cat((context, torch.tensor([[token_id]], device=device)), dim=1)
 
     return StreamingResponse(stream_generator(), media_type="application/x-ndjson")
