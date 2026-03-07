@@ -11,7 +11,8 @@ from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse
 
 modelID = '[2048V]'
-device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+# device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+device = 'cpu'
 
 def load_assets():
     with open(f'{modelID}model/vocab.json', 'r', encoding='utf-8') as f:
