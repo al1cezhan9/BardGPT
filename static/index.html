@@ -36,49 +36,69 @@
         const container = document.getElementById('container');
         
         async function generate() {
+            const btn = document.querySelector('button');
+            
+            // Safety check: prevent double-clicks if it's already running
+            if (btn.disabled) return; 
+
             const prompt = document.getElementById('prompt-input').value;
             const length = document.getElementById('token-count').value;
             const temp = document.getElementById('temp-slider').value;
             
             const container = document.getElementById('container');
             container.innerHTML = ''; 
-            
-            // Add the new variables to the URL string
-            const url = `http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
-            const response = await fetch(url);
 
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
+            // Lock the button
+            btn.disabled = true;
+            btn.innerText = 'Generating...';
             
-            let tokenIndex = 0; 
-            let buffer = '';
+            try {
+                const url = `http://localhost:8000/generate?prompt=${encodeURIComponent(prompt)}&length=${length}&temp=${temp}`;
+                const response = await fetch(url);
 
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
+                // Throw an error if the server responds with a 404, 500, etc.
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
                 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop(); 
+                let tokenIndex = 0; 
+                let buffer = '';
 
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-                    const data = JSON.parse(line);
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
                     
-                    // ensure this loop accounts for prompt tokens correctly
-                    const span = document.createElement('span');
-                    span.className = 'tok';
-                    span.id = `t-${tokenIndex}`;
-                    span.innerText = data.text;
-                    
-                    const thisAttn = data.attn;
-                    const currentTokenIndex = tokenIndex; // get the exact index for the closure
-                    span.onmouseover = () => showAttn(thisAttn, currentTokenIndex);
-                    span.onmouseout = () => clearAttn();
-                    
-                    container.appendChild(span);
-                    tokenIndex++; 
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); 
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        const data = JSON.parse(line);
+                        
+                        const span = document.createElement('span');
+                        span.className = 'tok';
+                        span.id = `t-${tokenIndex}`;
+                        span.innerText = data.text;
+                        
+                        const thisAttn = data.attn;
+                        const currentTokenIndex = tokenIndex; 
+                        span.onmouseover = () => showAttn(thisAttn, currentTokenIndex);
+                        span.onmouseout = () => clearAttn();
+                        
+                        container.appendChild(span);
+                        tokenIndex++; 
+                    }
                 }
+            } catch (error) {
+                // Handle any server or streaming errors gracefully
+                console.error("Generation failed:", error);
+                container.innerHTML += `<br><span style="color: #ff6b6b;">Error: Generation failed. Check console.</span>`;
+            } finally {
+                // The finally block executes NO MATTER WHAT, unlocking your button
+                btn.disabled = false;
+                btn.innerText = 'Generate';
             }
         }
         
@@ -130,3 +150,13 @@
     </script>
 </body>
 </html>
+
+
+<style>
+
+    button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+        pointer-events: none; /* Prevents any mouse events */
+    }
+</style>

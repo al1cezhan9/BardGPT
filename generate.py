@@ -67,7 +67,7 @@ def dump_generate():
 def stream_generate():
     for _ in range(to_generate):  
         global context  
-        # CROP: don't exceed model's maximum context length
+        # Crop: don't exceed model's maximum context length
         idx_cond = context[:, -config.block_size:]
         
         # Forward pass: Feed the entire cropped sequence
